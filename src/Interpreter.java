@@ -3,10 +3,18 @@ import java.util.Stack;
 import java.util.function.BiFunction;
 
 public class Interpreter {
+  
   // Top environment
-  private BiFunction<String, ArrayList<Object>, Object> env = 
+  private static BiFunction<String, ArrayList<Object>, Object> mainEnv = 
       (f, a) -> {
         switch (f) {
+        // tryna check-expect
+        case "check-expect":
+          if (a.size() != 2) {
+            throw new RuntimeException("check-expect needs 2 arguments");
+          }
+          CheckExpect.testStack1.add(a.remove(0));
+          CheckExpect.testStack2.add(a.remove(0));
         // tryna string append
         case "string-append":
           String output1 = "";
@@ -35,7 +43,84 @@ public class Interpreter {
             return (int)output2;
           }
           return output2;
-        // function is not in the environment
+        // tryna subtract together numbers
+        case "-":
+          double output3 = 0.0;
+          boolean first3 = true;
+          for (Object o : a) {
+            if (o instanceof Integer) {
+              if (first3) {
+                output3 += (int)o;
+                first3 = false;
+              }
+              else {
+                output3 -= (int)o;
+              }
+            }
+            else if (o instanceof Double) {
+              if (first3) {
+                output3 += (double)o;
+                first3 = false;
+              }
+              else {
+                output3 -= (double)o;
+              }
+            }
+            else {
+              throw new RuntimeException("- must be given only numbers");
+            }
+          }
+          if (output3 % 1 == 0) {
+            return (int)output3;
+          }
+          return output3;
+        // tryna multiply together numbers
+        case "*":
+          double output4 = 0.0;
+          for (Object o : a) {
+            if (o instanceof Integer) {
+              output4 *= (int)o;
+            }
+            else if (o instanceof Double) {
+              output4 *= (double)o;
+            }
+            else {
+              throw new RuntimeException("* must be given only numbers");
+            }
+          }
+          if (output4 % 1 == 0) {
+            return (int)output4;
+          }
+          return output4;
+        // tryna divide together numbers
+        case "/":
+          double output5;
+          Object first5 = a.remove(0);
+          if (first5 instanceof Integer) {
+            output5 = Double.valueOf((int)first5);
+          }
+          else if (first5 instanceof Double) {
+            output5 = (double)first5;
+          }
+          else {
+            throw new RuntimeException("/ must be given only numbers");
+          }
+          for (Object o : a) {
+            if (o instanceof Integer) {
+              output5 /= (int)o;
+            }
+            else if (o instanceof Double) {
+              output5 /= (double)o;
+            }
+            else {
+              throw new RuntimeException("/ must be given only numbers");
+            }
+          }
+          if (output5 % 1 == 0) {
+            return (int)output5;
+          }
+          return output5;
+          // function is not in the environment
         default:
           throw new RuntimeException("Unknown lookup: " + f);
         }
@@ -60,7 +145,7 @@ public class Interpreter {
       return false;
     }
   }
-      
+
   public ArrayList<Object> interpret(String program) {
     Stack<Integer> programStack = new Stack<Integer>();
     ArrayList<Object> outputArr = new ArrayList<Object>();
@@ -72,7 +157,7 @@ public class Interpreter {
       else if (cur.equals(')')) {
         int j = programStack.pop();
         if (programStack.empty()) {
-          Object evaluation = eval(program.substring(j, i + 1));
+          Object evaluation = eval(program.substring(j, i + 1), mainEnv);
           outputArr.add(evaluation);
         }
       }
@@ -80,7 +165,7 @@ public class Interpreter {
     return outputArr;
   }
 
-  Object eval(String expr) {
+  Object eval(String expr, BiFunction<String, ArrayList<Object>, Object> env) {
     if (expr.equals("")) {
       throw new RuntimeException("Empty string is not a valid input.");
     }
@@ -88,7 +173,7 @@ public class Interpreter {
     start = expr.charAt(0); end = expr.charAt(expr.length() - 1);
     // expr is a function call
     if (start.equals('(') && end.equals(')')) {
-      return evalFunction(expr);
+      return evalFunction(expr, env);
     }
     // expr is a string
     else if (start.equals('"') && end.equals('"')) {
@@ -103,11 +188,11 @@ public class Interpreter {
       return Double.parseDouble(expr);
     }
     else {
-      throw new RuntimeException("Unknown expression: " + expr);
+      return env.apply(expr, null);
     }
   }
-  
-  public Object evalFunction(String expr) {
+
+  public Object evalFunction(String expr, BiFunction<String, ArrayList<Object>, Object> env) {
     ArrayList<String> stringArgs = new ArrayList<String>();
     Stack<Character> charStack = new Stack<Character>();
     int j = 1;
@@ -141,8 +226,17 @@ public class Interpreter {
     ArrayList<Object> args = new ArrayList<Object>();
     String func = stringArgs.remove(0);
     for (String s : stringArgs) {
-      args.add(eval(s));
+      args.add(eval(s, env));
     }
     return env.apply(func, args);
   }
+  
+//  BiFunction<String, ArrayList<Object>, Object> extendEnv(String f, ArrayList<Object> a, Object o) {
+//    return (s, args) -> {
+//      if (s.equals(f)) {
+//        
+//      }
+//    };
+//  }
+      
 }
