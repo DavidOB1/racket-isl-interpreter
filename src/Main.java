@@ -5,10 +5,15 @@ public class Main {
     Interpreter interpreter = new Interpreter();
     // open racket file using args
     String program = "(string-append \"hello \" (string-append \"world\" \"!\"))"
-        + "(+ 5 10)";
+        + "(- 5 2 2) (check-expect 4 (+ 2 2))";
     ArrayList<Object> output = interpreter.interpret(program);
+    // doing check-expects
+    String[] a = {"CheckExpect"};
+    tester.Main.main(a);
     for (Object o : output) {
-      System.out.println(o);
+      if (o != null) {
+        System.out.println(o);
+      }
     }
   }
 }
