@@ -1,131 +1,11 @@
 import java.util.ArrayList;
 import java.util.Stack;
-import java.util.function.BiFunction;
+import java.util.function.Function;
 
 public class Interpreter {
-  
-  // Top environment
-  private static BiFunction<String, ArrayList<Object>, Object> mainEnv = 
-      (f, a) -> {
-        switch (f) {
-        // tryna check-expect
-        case "check-expect":
-          if (a.size() != 2) {
-            throw new RuntimeException("check-expect needs 2 arguments");
-          }
-          CheckExpect.testStack1.add(a.remove(0));
-          CheckExpect.testStack2.add(a.remove(0));
-        // tryna string append
-        case "string-append":
-          String output1 = "";
-          for (Object o : a) {
-            if (!(o instanceof String)) {
-              throw new RuntimeException("string-append must be given only Strings");
-            }
-            output1 += (String)o;
-          }
-          return output1;
-        // tryna add together numbers
-        case "+":
-          double output2 = 0.0;
-          for (Object o : a) {
-            if (o instanceof Integer) {
-              output2 += (int)o;
-            }
-            else if (o instanceof Double) {
-              output2 += (double)o;
-            }
-            else {
-              throw new RuntimeException("+ must be given only numbers");
-            }
-          }
-          if (output2 % 1 == 0) {
-            return (int)output2;
-          }
-          return output2;
-        // tryna subtract together numbers
-        case "-":
-          double output3 = 0.0;
-          boolean first3 = true;
-          for (Object o : a) {
-            if (o instanceof Integer) {
-              if (first3) {
-                output3 += (int)o;
-                first3 = false;
-              }
-              else {
-                output3 -= (int)o;
-              }
-            }
-            else if (o instanceof Double) {
-              if (first3) {
-                output3 += (double)o;
-                first3 = false;
-              }
-              else {
-                output3 -= (double)o;
-              }
-            }
-            else {
-              throw new RuntimeException("- must be given only numbers");
-            }
-          }
-          if (output3 % 1 == 0) {
-            return (int)output3;
-          }
-          return output3;
-        // tryna multiply together numbers
-        case "*":
-          double output4 = 0.0;
-          for (Object o : a) {
-            if (o instanceof Integer) {
-              output4 *= (int)o;
-            }
-            else if (o instanceof Double) {
-              output4 *= (double)o;
-            }
-            else {
-              throw new RuntimeException("* must be given only numbers");
-            }
-          }
-          if (output4 % 1 == 0) {
-            return (int)output4;
-          }
-          return output4;
-        // tryna divide together numbers
-        case "/":
-          double output5;
-          Object first5 = a.remove(0);
-          if (first5 instanceof Integer) {
-            output5 = Double.valueOf((int)first5);
-          }
-          else if (first5 instanceof Double) {
-            output5 = (double)first5;
-          }
-          else {
-            throw new RuntimeException("/ must be given only numbers");
-          }
-          for (Object o : a) {
-            if (o instanceof Integer) {
-              output5 /= (int)o;
-            }
-            else if (o instanceof Double) {
-              output5 /= (double)o;
-            }
-            else {
-              throw new RuntimeException("/ must be given only numbers");
-            }
-          }
-          if (output5 % 1 == 0) {
-            return (int)output5;
-          }
-          return output5;
-          // function is not in the environment
-        default:
-          throw new RuntimeException("Unknown lookup: " + f);
-        }
-      };
 
+  private Function<String, Object> mainEnv = BasicEnv.env;
+  
   static boolean isInteger(String s) {
     try {
       Integer.parseInt(s);
@@ -165,14 +45,45 @@ public class Interpreter {
     return outputArr;
   }
 
-  Object eval(String expr, BiFunction<String, ArrayList<Object>, Object> env) {
+  Object eval(String expr, Function<String, Object> env) {
     if (expr.equals("")) {
       throw new RuntimeException("Empty string is not a valid input.");
     }
     Character start, end;
     start = expr.charAt(0); end = expr.charAt(expr.length() - 1);
+    // expr is definition
+    if (expr.length() > 8 && expr.substring(0, 8).equals("(define ") && end.equals(')')) {
+      ArrayList<String> stringArgs = parse(expr);
+      stringArgs.remove(0);
+      if (stringArgs.size() != 2) {
+        throw new RuntimeException("define expects 2 arguments, given " + stringArgs.size());
+      }
+      String firstArg = stringArgs.get(0);
+      String secondArg = stringArgs.get(1);
+      Character firstA = firstArg.charAt(0); 
+      Character lastA = firstArg.charAt(firstArg.length() -1);
+      if (firstA.equals('(') && lastA.equals(')')) {
+        ArrayList<String> funcArgs = Interpreter.parse(firstArg);
+        String funcName = funcArgs.remove(0);
+        mainEnv = extendEnv(funcName, (Function<ArrayList<Object>, Object>) (args) -> {
+          Function<String, Object> localEnv = mainEnv;
+          if (funcArgs.size() != args.size()) {
+            throw new RuntimeException(funcName + " expects " + funcArgs.size() + 
+                " arguements, given " + args.size());
+          }
+          for (int i = 0; i < funcArgs.size(); i++) {
+            localEnv = extendEnv(funcArgs.get(i), args.get(i), localEnv);
+          }
+            return eval(secondArg, localEnv);
+        }, mainEnv);
+      }
+      else {
+        mainEnv = extendEnv(firstArg, eval(secondArg, mainEnv), mainEnv);
+      }
+      return null;
+    }
     // expr is a function call
-    if (start.equals('(') && end.equals(')')) {
+    else if (start.equals('(') && end.equals(')')) {
       return evalFunction(expr, env);
     }
     // expr is a string
@@ -188,18 +99,23 @@ public class Interpreter {
       return Double.parseDouble(expr);
     }
     else {
-      return env.apply(expr, null);
+      return env.apply(expr);
     }
   }
 
-  public Object evalFunction(String expr, BiFunction<String, ArrayList<Object>, Object> env) {
+  public static ArrayList<String> parse(String expr) {
     ArrayList<String> stringArgs = new ArrayList<String>();
     Stack<Character> charStack = new Stack<Character>();
     int j = 1;
+    Character cur, prev;
+    cur = expr.charAt(0);
     for (int i = 1; i < expr.length() - 1; i++) {
-      Character cur = expr.charAt(i);
+      prev = cur;
+      cur = expr.charAt(i);
       if (cur.equals(' ') && charStack.empty()) {
-        stringArgs.add(expr.substring(j, i));
+        if (!(prev.equals(')') || prev.equals(' '))) {
+          stringArgs.add(expr.substring(j, i));
+        }
         j = i + 1;
       }
       else if (cur.equals('"')) {
@@ -223,20 +139,32 @@ public class Interpreter {
     if (j < expr.length() - 1) {
       stringArgs.add(expr.substring(j, expr.length() - 1));
     }
+    return stringArgs;
+  }
+  
+  public Object evalFunction(String expr, Function<String, Object> env) {
+    ArrayList<String> stringArgs = parse(expr);
+    // Running the program
     ArrayList<Object> args = new ArrayList<Object>();
-    String func = stringArgs.remove(0);
+    @SuppressWarnings("unchecked")
+    Function<ArrayList<Object>, Object> func = (Function<ArrayList<Object>, Object>) 
+        env.apply(stringArgs.remove(0));
     for (String s : stringArgs) {
       args.add(eval(s, env));
     }
-    return env.apply(func, args);
+    return func.apply(args);
   }
   
-//  BiFunction<String, ArrayList<Object>, Object> extendEnv(String f, ArrayList<Object> a, Object o) {
-//    return (s, args) -> {
-//      if (s.equals(f)) {
-//        
-//      }
-//    };
-//  }
+  Function<String, Object> extendEnv(String ref, Object body, Function<String, Object> refEnv) {
+    Function<String, Object> otherEnv = refEnv;
+    return (s) -> {
+      if (s.equals(ref)) {
+        return body;
+      }
+      else {
+        return otherEnv.apply(s);
+      }
+    };
+  }
       
 }
