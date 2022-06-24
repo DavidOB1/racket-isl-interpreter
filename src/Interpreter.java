@@ -27,20 +27,24 @@ public class Interpreter {
   }
 
   public ArrayList<Object> interpret(String program) {
-    Stack<Integer> programStack = new Stack<Integer>();
+//    Stack<Integer> programStack = new Stack<Integer>();
     ArrayList<Object> outputArr = new ArrayList<Object>();
-    for (int i = 0; i < program.length(); i++) {
-      Character cur = program.charAt(i);
-      if (cur.equals('(')) {
-        programStack.push(i);
-      }
-      else if (cur.equals(')')) {
-        int j = programStack.pop();
-        if (programStack.empty()) {
-          Object evaluation = eval(program.substring(j, i + 1), mainEnv);
-          outputArr.add(evaluation);
-        }
-      }
+//    for (int i = 0; i < program.length(); i++) {
+//      Character cur = program.charAt(i);
+//      if (cur.equals('(')) {
+//        programStack.push(i);
+//      }
+//      else if (cur.equals(')')) {
+//        int j = programStack.pop();
+//        if (programStack.empty()) {
+//          Object evaluation = eval(program.substring(j, i + 1), mainEnv);
+//          outputArr.add(evaluation);
+//        }
+//      }
+//    }
+    ArrayList<String> stringArgs = parse("(" + program + ")");
+    for (String s : stringArgs) {
+      outputArr.add(eval(s, mainEnv));
     }
     return outputArr;
   }
@@ -82,9 +86,27 @@ public class Interpreter {
       }
       return null;
     }
+    // expr is an if statement
+    else if (expr.length() > 4 && expr.substring(0, 4).equals("(if ") && end.equals(')')) {
+      ArrayList<String> stringArgs = parse(expr);
+      stringArgs.remove(0);
+      if (stringArgs.size() != 3) {
+        throw new RuntimeException("if expects 3 arguements, given " + stringArgs.size());
+      }
+      if ((boolean) eval(stringArgs.get(0), env)) {
+        return eval(stringArgs.get(1), env);
+      }
+      else {
+        return eval(stringArgs.get(2), env);
+      }
+    }
     // expr is a function call
     else if (start.equals('(') && end.equals(')')) {
       return evalFunction(expr, env);
+    }
+    // expr is a symbol
+    else if (start.equals('\'')) {
+      return expr;
     }
     // expr is a string
     else if (start.equals('"') && end.equals('"')) {
@@ -132,8 +154,10 @@ public class Interpreter {
       else if (cur.equals(')')) {
         // Throw syntax error?
         charStack.pop();
-        stringArgs.add(expr.substring(j, i + 1));
-        j = i + 1;
+        if (charStack.empty()) {
+          stringArgs.add(expr.substring(j, i + 1));
+          j = i + 1;
+        }
       }
     }
     if (j < expr.length() - 1) {

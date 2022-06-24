@@ -84,12 +84,25 @@ public class BasicEnv {
     case "*":
       return (Function<ArrayList<Object>, Object>) (a) -> {
         double output = 0.0;
+        boolean first = true;
         for (Object o : a) {
           if (o instanceof Integer) {
-            output *= (int) o;
+            if (first) {
+              output += (int) o;
+              first = false;
+            }
+            else {
+              output *= (int) o;
+            }
           }
           else if (o instanceof Double) {
-            output *= (double) o;
+            if (first) {
+              output += (double) o;
+              first = false;
+            }
+            else {
+              output *= (double) o;
+            }
           }
           else {
             throw new RuntimeException("* must be given only numbers");
@@ -130,6 +143,72 @@ public class BasicEnv {
         }
         if (output % 1 == 0) {
           return (int) output;
+        }
+        return output;
+      };
+   // tryna check if greater than
+    case ">":
+      return (Function<ArrayList<Object>, Object>) (a) -> {
+        if (a.size() < 2) {
+          throw new RuntimeException("> expects at least two arguments");
+        }
+        boolean output = true;
+        for (int i = 1; i < a.size(); i++) {
+          Object o1 = a.get(i-1);
+          Object o2 = a.get(i);
+          double n1, n2;
+          if (o1 instanceof Integer) {
+           n1 = Double.valueOf((int) o1);
+          }
+          else if (o1 instanceof Double) {
+           n1 = (double) o1;
+          }
+          else {
+            throw new RuntimeException("> expects a number");
+          }
+          if (o2 instanceof Integer) {
+            n2 = Double.valueOf((int) o2);
+          }
+          else if (o2 instanceof Double) {
+            n2 = (double) o2;
+          }
+          else {
+            throw new RuntimeException("> expects a number");
+          }
+          output &= n1 > n2;
+        }
+        return output;
+      };
+   // tryna check if less than
+    case "<":
+      return (Function<ArrayList<Object>, Object>) (a) -> {
+        if (a.size() < 2) {
+          throw new RuntimeException("> expects at least two arguments");
+        }
+        boolean output = true;
+        for (int i = 1; i < a.size(); i++) {
+          Object o1 = a.get(i-1);
+          Object o2 = a.get(i);
+          double n1, n2;
+          if (o1 instanceof Integer) {
+           n1 = Double.valueOf((int) o1);
+          }
+          else if (o1 instanceof Double) {
+           n1 = (double) o1;
+          }
+          else {
+            throw new RuntimeException("> expects a number");
+          }
+          if (o2 instanceof Integer) {
+            n2 = Double.valueOf((int) o2);
+          }
+          else if (o2 instanceof Double) {
+            n2 = (double) o2;
+          }
+          else {
+            throw new RuntimeException("> expects a number");
+          }
+          output &= n1 < n2;
         }
         return output;
       };
