@@ -15,6 +15,30 @@ public class BasicEnv {
   @SuppressWarnings("unchecked")
   public static Function<String, Object> env = (s) -> {
     switch (s) {
+    // checks the equality of two items
+    case "equal?":
+      return (Function<ArrayList<Object>, Object>) (a) -> {
+        invalidArgsCheck(s, 2, a);
+        return a.get(0).equals(a.get(1));
+      };
+    // throwing an error
+    case "error":
+      return (Function<ArrayList<Object>, Object>) (a) -> {
+        invalidArgsCheck(s, 1, a);
+        if (!(a.get(0) instanceof String)) {
+          throw new RuntimeException("error should recieve a string as an argument");
+        }
+        throw new RuntimeException((String) a.get(0));
+      };
+    // negation
+    case "not":
+      return (Function<ArrayList<Object>, Object>) (a) -> {
+        invalidArgsCheck(s, 1, a);
+        if (!(a.get(0) instanceof Boolean)) {
+          throw new RuntimeException("not should recieve a boolean as an arguement");
+        }
+        return !(boolean)a.get(0);
+      };
     // returns the identity of the input
     case "identity":
       return (Function<ArrayList<Object>, Object>) (a) -> {
@@ -26,14 +50,14 @@ public class BasicEnv {
     case "empty":
     case "null":
       HashMap<String, Object> mtOutput = new HashMap<String, Object>();
-      mtOutput.put("type", "mt");
+      mtOutput.put("$$type$$", "mt");
       return mtOutput;
     // determining if list is empty
     case "empty?":
       return (Function<ArrayList<Object>, Object>) (a) -> {
         invalidArgsCheck(s, 1, a);
         try {
-          return ((String) ((HashMap<String, Object>) a.get(0)).get("type")).equals("mt");
+          return ((String) ((HashMap<String, Object>) a.get(0)).get("$$type$$")).equals("mt");
         }
         catch (Exception e) {
           return false;
@@ -44,7 +68,7 @@ public class BasicEnv {
       return (Function<ArrayList<Object>, Object>) (a) -> {
         invalidArgsCheck(s, 1, a);
         try {
-          return ((String) ((HashMap<String, Object>) a.get(0)).get("type")).equals("cons");
+          return ((String) ((HashMap<String, Object>) a.get(0)).get("$$type$$")).equals("cons");
         }
         catch (Exception e) {
           return false;
@@ -57,7 +81,7 @@ public class BasicEnv {
         boolean mtList = false;
         try {
           HashMap<String, Object> listObj = ((HashMap<String, Object>) a.get(0));
-          String listType = (String) listObj.get("type");
+          String listType = (String) listObj.get("$$type$$");
           mtList = listType.equals("mt");
           if (listType.equals("cons")) {
             return listObj.get("first");
@@ -78,7 +102,7 @@ public class BasicEnv {
         boolean mtList = false;
         try {
           HashMap<String, Object> listObj = ((HashMap<String, Object>) a.get(0));
-          String listType = (String) listObj.get("type");
+          String listType = (String) listObj.get("$$type$$");
           mtList = listType.equals("mt");
           if (listType.equals("cons")) {
             return listObj.get("rest");
@@ -88,7 +112,7 @@ public class BasicEnv {
           if (mtList) {
             throw new RuntimeException("Cannot call rest on an empty list");
           }
-          throw new RuntimeException("rest must be given a list");
+          throw new RuntimeException("rest must be given a cons list");
         }
         return null;
       };
@@ -158,6 +182,90 @@ public class BasicEnv {
           output += (String) o;
         }
         return output;
+      };
+    // Checks if the first string is contained inside the second string
+    case "string-contains?":
+      return (Function<ArrayList<Object>, Object>) (a) -> {
+        invalidArgsCheck(s, 2, a);
+        if (!((a.get(0) instanceof String) && (a.get(1) instanceof String))) {
+          throw new RuntimeException("string-contains? must be given strings only");
+        }
+        return ((String) a.get(1)).contains((String) a.get(0));
+      };
+   // Capitalizes the string
+    case "string-upcase":
+      return (Function<ArrayList<Object>, Object>) (a) -> {
+        invalidArgsCheck(s, 1, a);
+        if (!(a.get(0) instanceof String)) {
+          throw new RuntimeException("string-upcase must be given a string");
+        }
+        return ((String) a.get(0)).toUpperCase();
+      };
+   // Lowercases the string
+    case "string-downcase":
+      return (Function<ArrayList<Object>, Object>) (a) -> {
+        invalidArgsCheck(s, 1, a);
+        if (!(a.get(0) instanceof String)) {
+          throw new RuntimeException("string-downcase must be given a string");
+        }
+        return ((String) a.get(0)).toLowerCase();
+      };
+   // String alphabet comparisons
+    case "string<?":
+      return (Function<ArrayList<Object>, Object>) (a) -> {
+        if (a.size() < 2) {
+          throw new RuntimeException("string<? should recieve at least two strings");
+        }
+        boolean boolOutput = true;
+        if (!(a.get(0) instanceof String)) {
+          throw new RuntimeException("string<? should be given only strings");
+        }
+        String prev = (String) a.get(0);
+        for (int i = 1; i < a.size(); i++) {
+          if (!(a.get(i) instanceof String)) {
+            throw new RuntimeException("string<? should be given only strings");
+          }
+          String thisOne = (String) a.get(i);
+          boolOutput &= prev.compareTo(thisOne) < 0;
+          prev = thisOne;
+        }
+        return boolOutput;
+      };
+   // String alphabet comparisons
+    case "string<=?":
+      return (Function<ArrayList<Object>, Object>) (a) -> {
+        if (a.size() < 2) {
+          throw new RuntimeException("string<=? should recieve at least two strings");
+        }
+        boolean boolOutput = true;
+        if (!(a.get(0) instanceof String)) {
+          throw new RuntimeException("string<=? should be given only strings");
+        }
+        String prev = (String) a.get(0);
+        for (int i = 1; i < a.size(); i++) {
+          if (!(a.get(i) instanceof String)) {
+            throw new RuntimeException("string<=? should be given only strings");
+          }
+          String thisOne = (String) a.get(i);
+          boolOutput &= prev.compareTo(thisOne) <= 0;
+          prev = thisOne;
+        }
+        return boolOutput;
+      };
+    // Converts a number to a string
+    case "number->string":
+      return (Function<ArrayList<Object>, Object>) (a) -> {
+        invalidArgsCheck(s, 1, a);
+        Object o1 = a.get(0);
+        if (o1 instanceof Integer) {
+          return String.valueOf((int) o1);
+        }
+        else if (o1 instanceof Double) {
+          return String.valueOf((double) o1);
+        }
+        else {
+          throw new RuntimeException("number->string must be given a number");
+        }
       };
     // tryna check if arg is a number
     case "number?":
@@ -434,7 +542,7 @@ public class BasicEnv {
       };
     // function is not in the environment
     default:
-      throw new RuntimeException("Unknown lookup: " + s);
+      throw new RuntimeException("Unknown variable: " + s);
     }
   };
 }

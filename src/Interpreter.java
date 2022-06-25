@@ -61,10 +61,6 @@ public class Interpreter {
     start = expr.charAt(0); end = expr.charAt(expr.length() - 1);
     // expr is definition
     if (expr.length() > 8 && expr.substring(0, 8).equals("(define ")) {
-      if (expr.contains("...")) {
-        // definition is a template
-        return null;
-      }
       ArrayList<String> stringArgs = parse(expr);
       stringArgs.remove(0);
       if (stringArgs.size() != 2) {
@@ -75,24 +71,46 @@ public class Interpreter {
       Character firstA = firstArg.charAt(0); 
       Character lastA = firstArg.charAt(firstArg.length() -1);
       if (firstA.equals('(') && lastA.equals(')')) {
-        ArrayList<String> funcArgs = Interpreter.parse(firstArg);
-        String funcName = funcArgs.remove(0);
-        mainEnv = extendEnv(funcName, (Function<ArrayList<Object>, Object>) (args) -> {
-          Function<String, Object> localEnv = mainEnv;
-          if (funcArgs.size() != args.size()) {
-            throw new RuntimeException(funcName + " expects " + funcArgs.size() + 
-                " arguements, given " + args.size());
-          }
-          for (int i = 0; i < funcArgs.size(); i++) {
-            localEnv = extendEnv(funcArgs.get(i), args.get(i), localEnv);
-          }
-            return eval(secondArg, localEnv);
-        }, mainEnv);
+        if (expr.contains("...")) {
+          // definition is a template
+          return null;
+        }
+        String lamExpr = secondArg;
+        ArrayList<String> lamArgs = parse(firstArg);
+        String funcName = lamArgs.remove(0);
+        String lamParams = "(";
+        for (String p : lamArgs) {
+          lamParams += p + " ";
+        }
+        lamParams = lamParams.substring(0, lamParams.length() - 1) + ")";
+        lamExpr = "(lambda " + lamParams + " "  + lamExpr + ")";
+        mainEnv = extendEnv(funcName, eval(lamExpr, mainEnv), mainEnv);
       }
       else {
         mainEnv = extendEnv(firstArg, eval(secondArg, mainEnv), mainEnv);
       }
       return null;
+    }
+    // expr is a lambda
+    else if (expr.length() > 8 && expr.substring(0, 8).equals("(lambda ")) {
+      ArrayList<String> lambdaArgs = Interpreter.parse(expr);
+      lambdaArgs.remove(0);
+      if (lambdaArgs.size() != 2) {
+        throw new RuntimeException("Function expects 2 arguments, given " + lambdaArgs.size());
+      }
+      ArrayList<String> lambdaParams = parse(lambdaArgs.get(0));
+      String lambdaBody = lambdaArgs.get(1);
+      return (Function<ArrayList<Object>, Object>) (args) -> {
+        Function<String, Object> localEnv = mainEnv;
+        if (lambdaParams.size() != args.size()) {
+          throw new RuntimeException("function expects " + lambdaParams.size() + 
+              " arguements, given " + args.size());
+        }
+        for (int i = 0; i < lambdaParams.size(); i++) {
+          localEnv = extendEnv(lambdaParams.get(i), args.get(i), localEnv);
+        }
+          return eval(lambdaBody, localEnv);
+      };
     }
     // expr is an if statement
     else if (expr.length() > 4 && expr.substring(0, 4).equals("(if ") && end.equals(')')) {
@@ -132,7 +150,7 @@ public class Interpreter {
       
       mainEnv = extendEnv("make-" + structName, (Function<ArrayList<Object>, Object>) (args) -> {
         HashMap<String, Object> struct = new HashMap<String, Object>();
-        struct.put("type", structName);
+        struct.put("$$type$$", structName);
         if (args.size() != structParams.size()) {
           throw new RuntimeException("make-" + structName + " expects " + structParams.size()
           + " arguments, given " + args.size());
@@ -149,7 +167,7 @@ public class Interpreter {
           @SuppressWarnings("unchecked")
           HashMap<String, Object> thisStruct = (HashMap<String, Object>) args.get(0);
           if (args.size() == 1) {
-            output = structName.equals((String) thisStruct.get("type"));
+            output = structName.equals((String) thisStruct.get("$$type$$"));
           }
         }
         finally {
@@ -166,7 +184,7 @@ public class Interpreter {
           try {
             @SuppressWarnings("unchecked")
             HashMap<String, Object> thisStruct = (HashMap<String, Object>) args.get(0);
-            if (args.size() == 1 && ((String) thisStruct.get("type")).equals(structName)) {
+            if (args.size() == 1 && ((String) thisStruct.get("$$type$$")).equals(structName)) {
               result = thisStruct.get(param);
             }
           }
@@ -252,11 +270,11 @@ public class Interpreter {
       }
       @SuppressWarnings("unchecked")
       HashMap<String, Object> rest = (HashMap<String, Object>) restObj;
-      if (!(rest.get("type").equals("mt") || rest.get("type").equals("cons"))) {
+      if (!(rest.get("$$type$$").equals("mt") || rest.get("$$type$$").equals("cons"))) {
         throw new RuntimeException("cons second argument must be a list");
       }
       HashMap<String, Object> output = new HashMap<String, Object>();
-      output.put("type", "cons");
+      output.put("$$type$$", "cons");
       output.put("first", first);
       output.put("rest", rest);
       return output;
@@ -346,7 +364,7 @@ public class Interpreter {
     ArrayList<Object> args = new ArrayList<Object>();
     @SuppressWarnings("unchecked")
     Function<ArrayList<Object>, Object> func = (Function<ArrayList<Object>, Object>) 
-        env.apply(stringArgs.remove(0));
+        eval(stringArgs.remove(0), env);
     for (String s : stringArgs) {
       args.add(eval(s, env));
     }

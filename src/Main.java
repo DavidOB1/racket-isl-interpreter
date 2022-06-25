@@ -3,20 +3,21 @@ import java.io.FileNotFoundException;
 import java.util.ArrayList;
 import java.util.Stack;
 import java.util.Scanner;
-// AGENDA: Adding images and lambdas
+
 public class Main {
+
   public static void main(String[] args) {
     boolean running = true;
     Interpreter interpreter = new Interpreter();
     // Loading macros
     String program = "";
     try {
-      File file = new File("C:\\Users\\ottob\\Downloads\\fundies2\\EclipseWorkspace\\ISL Interpreter\\src\\macros.txt");
+      File file = new File("src/macros.rkt");
       Scanner fileReader = new Scanner(file);
       while (fileReader.hasNextLine()) {
         program += fileReader.nextLine() + "\n";
       }
-      file = new File("C:\\Users\\ottob\\Downloads\\fundies2\\EclipseWorkspace\\ISL Interpreter\\src\\program.txt");
+      file = new File("src/" + args[0]);
       fileReader.close();
       fileReader = new Scanner(file);
       while (fileReader.hasNextLine()) {
@@ -25,13 +26,14 @@ public class Main {
       fileReader.close();
     }
     catch (FileNotFoundException e) {
-      throw new RuntimeException("Please ensure 'macros.txt' is contained in the src directory.");
+      throw new RuntimeException("Please ensure 'macros.txt' is contained in the src directory "
+          + "and that the file you want ran is in the src directory and the run configuration.");
     }
 
-    program = removeComments(program);
+    program = removeComments(program.replace("#reader", ";"));
     ArrayList<Object> output = 
         interpreter.interpret(program.replace('\n', ' ').replace('\t', ' ')
-            .replace('[', '(').replace(']', ')'));
+            .replace('[', '(').replace(']', ')').replace("λ", "lambda"));
     // doing check-expects
     String[] a = {"CheckExpect"};
     tester.Main.main(a);
@@ -58,11 +60,16 @@ public class Main {
         System.out.println("Ending interpreter.");
         break;
       }
-      ArrayList<Object> lineEval = interpreter.interpret(line);
-      for (Object o : lineEval) {
-        if (o != null) {
-          System.out.println(o);
+      try {
+        ArrayList<Object> lineEval = interpreter.interpret(line);
+        for (Object o : lineEval) {
+          if (o != null) {
+            System.out.println(o);
+          }
         }
+      }
+      catch (Exception e) {
+        System.out.println("Error: " + e.getMessage());
       }
     }
   }
