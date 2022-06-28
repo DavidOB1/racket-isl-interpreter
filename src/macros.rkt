@@ -6,13 +6,22 @@
 (define (sub1 n) (- n 1))
 (define (sqr n) (* n n))
 (define (abs n) (if (< n 0) (* n -1) n))
-(define (max n1 n2) (if (> n1 n2) n1 n2))
-(define (min n1 n2) (if (< n1 n2) n1 n2))
 (define (negative? n) (< n 0))
 (define (positive? n) (> n 0))
 (define (sgn n) (if (< n 0) -1 1))
+(define (zero? n) (= n 0))
+(define (remainder n m)
+  (if (and (integer? n) (integer? m))
+      (modulo n m)
+      (error "remainder must be given two integers")))
+(define (even? n)
+  (zero? (modulo n 2)))
+(define (odd? n)
+  (not (even? n)))
 (define-struct posn [x y])
 
+; Functions for strings
+(define key=? string=?)
 
 ; Functions for lists
 (define head first)
@@ -92,3 +101,18 @@
       (cons a l)
       (cons (first l) (insertion-sort-helper a (rest l) f))))
 
+
+; Functions for images
+(define (square s o c)
+  (rectangle s s o c))
+(define (empty-scene w h)
+  (rectangle w h "outline" "black"))
+(define (place-images imgs posns scene)
+  (cond
+    [(and (empty? imgs) (empty? posns)) scene]
+    [(and (cons? imgs) (cons? posns))
+     (place-image (first imgs)
+                  (posn-x (first posns))
+                  (posn-y (first posns))
+                  (place-images (rest imgs) (rest posns) scene))]
+    [else (error "place-images must be given lists of posns and images of the same length")]))

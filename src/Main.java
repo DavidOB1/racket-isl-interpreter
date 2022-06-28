@@ -30,7 +30,7 @@ public class Main {
           + "and that the file you want ran is in the src directory and the run configuration.");
     }
 
-    program = removeComments(program.replace("#reader", ";"));
+    program = removeComments(program.replace("#reader", ";").replace("#;", ""));
     ArrayList<Object> output = 
         interpreter.interpret(program.replace('\n', ' ').replace('\t', ' ')
             .replace('[', '(').replace(']', ')').replace("λ", "lambda"));

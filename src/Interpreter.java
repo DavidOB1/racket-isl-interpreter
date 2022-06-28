@@ -2,6 +2,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Stack;
 import java.util.function.Function;
+import javalib.worldimages.WorldImage;
 
 public class Interpreter {
 
@@ -63,7 +64,7 @@ public class Interpreter {
     if (expr.length() > 8 && expr.substring(0, 8).equals("(define ")) {
       ArrayList<String> stringArgs = parse(expr);
       stringArgs.remove(0);
-      if (stringArgs.size() != 2) {
+      if (stringArgs.size() != 2 && !expr.contains("...")) {
         throw new RuntimeException("define expects 2 arguments, given " + stringArgs.size());
       }
       String firstArg = stringArgs.get(0);
@@ -79,10 +80,15 @@ public class Interpreter {
         ArrayList<String> lamArgs = parse(firstArg);
         String funcName = lamArgs.remove(0);
         String lamParams = "(";
-        for (String p : lamArgs) {
-          lamParams += p + " ";
+        if (lamArgs.size() > 0) {
+          for (String p : lamArgs) {
+            lamParams += p + " ";
+          }
+          lamParams = lamParams.substring(0, lamParams.length() - 1) + ")";
         }
-        lamParams = lamParams.substring(0, lamParams.length() - 1) + ")";
+        else {
+          lamParams += ")";
+        }
         lamExpr = "(lambda " + lamParams + " "  + lamExpr + ")";
         mainEnv = extendEnv(funcName, eval(lamExpr, mainEnv), mainEnv);
       }
@@ -136,6 +142,95 @@ public class Interpreter {
       futureTestStack2.push(stringArgs.get(1));
       return null;
     }
+//    // expr is a local
+//    else if (expr.length() > 7 && expr.substring(0, 7).equals("(local ")) {
+//      ArrayList<String> stringArgs = parse(expr);
+//      stringArgs.remove(0);
+//      if (stringArgs.size() != 2) {
+//        throw new RuntimeException("local should have only 2 parts");
+//      }
+//      ArrayList<String> defs = parse(stringArgs.get(0));
+//      String body = stringArgs.get(1);
+//      Function<String, Object> localEnv = env;
+//      for (String def : defs) {
+//        if (def.length() < 8 || !def.substring(0, 8).equals("(define ")) {
+//          throw new RuntimeException("local must be given only definitions");
+//        }
+//        ArrayList<String> defArgs = parse(def);
+//        defArgs.remove(0);
+//        if (defArgs.size() != 2) {
+//          throw new RuntimeException("local defintion should have only 2 parts");
+//        }
+//        String defDef = defArgs.get(0);
+//        if (defDef.substring(0, 1).equals("(") && defDef.substring(defDef.length() -1, 
+//            defDef.length()).equals(")")) {
+//          String lamExpr = defArgs.get(1);
+//          ArrayList<String> lamArgs = parse(defDef);
+//          String funcName = lamArgs.remove(0); 
+//          Function<ArrayList<Object>, Object> localFunc = (args) -> {
+//            Function<String, Object> innerEnv = env;
+//            if (lamArgs.size() != args.size()) {
+//              throw new RuntimeException("function expects " + lamArgs.size() + 
+//                  " arguements, given " + args.size());
+//            }
+//            for (int i = 0; i < lamArgs.size(); i++) {
+//              innerEnv = extendEnv(lamArgs.get(i), args.get(i), innerEnv);
+//            }
+//              return eval(lamExpr, innerEnv);
+//          };
+//          localEnv = extendEnv(funcName, localFunc, localEnv);
+//        }
+//        else {
+//          localEnv = extendEnv(defDef, eval(defArgs.get(1), localEnv), localEnv);
+//        }
+//      }
+//      return eval(body, localEnv);
+//    }
+    // expr is big bang
+    else if (expr.length() > 10 && expr.substring(0, 10).equals("(big-bang ")) {
+      ArrayList<String> stringArgs = parse(expr);
+      stringArgs.remove(0);
+      BigBang bigBangGame = new BigBang(eval(stringArgs.get(0), env));
+      for (int i = 1; i < stringArgs.size(); i++) {
+        ArrayList<String> bangArgs = parse(stringArgs.get(i));
+        if (bangArgs.size() != 2 && !bangArgs.get(0).equals("stop-when")) {
+          throw new RuntimeException("Invalid number of arguements given to " + bangArgs.get(0));
+        }
+        String bbFunc = bangArgs.get(0);
+        String stringFunc = bangArgs.get(1);
+        // Checking which function to add
+        if (bbFunc.equals("to-draw")) {
+          bigBangGame.setToDraw(eval(stringFunc, env));
+        }
+        else if (bbFunc.equals("on-tick")) {
+          bigBangGame.setOnTick(eval(stringFunc, env));
+        }
+        else if (bbFunc.equals("on-key")) {
+          bigBangGame.setOnKey(eval(stringFunc, env));
+        }
+        else if (bbFunc.equals("stop-when")) {
+          if (bangArgs.size() == 2) {
+            bigBangGame.setStopWhen(eval(stringFunc, env));
+          }
+          else if (bangArgs.size() == 3) {
+            bigBangGame.setStopWhen(eval(stringFunc, env), eval(bangArgs.get(2), env));
+          }
+          else {
+            throw new RuntimeException("stop-when should only be given 2 or 3 arguments");
+          }
+        }
+        else {
+          throw new RuntimeException("Unknown big-bang arg: " + bbFunc);
+        }
+      }
+      WorldImage firstFrame = bigBangGame.draw();
+      bigBangGame.bigBang((int) firstFrame.getWidth(), (int) firstFrame.getHeight(), 1.0 / 28.0);
+      return null;
+    }
+    // expr is an import
+    else if (expr.length() > 9 && expr.substring(0, 9).equals("(require ")) {
+      return null;
+    }
     // expr is a define struct
     else if (expr.length() > 15 && expr.substring(0, 15).equals("(define-struct ")) {
       ArrayList<String> stringArgs = parse(expr);
@@ -150,7 +245,7 @@ public class Interpreter {
       
       mainEnv = extendEnv("make-" + structName, (Function<ArrayList<Object>, Object>) (args) -> {
         HashMap<String, Object> struct = new HashMap<String, Object>();
-        struct.put("$$type$$", structName);
+        struct.put(";type", structName);
         if (args.size() != structParams.size()) {
           throw new RuntimeException("make-" + structName + " expects " + structParams.size()
           + " arguments, given " + args.size());
@@ -167,7 +262,7 @@ public class Interpreter {
           @SuppressWarnings("unchecked")
           HashMap<String, Object> thisStruct = (HashMap<String, Object>) args.get(0);
           if (args.size() == 1) {
-            output = structName.equals((String) thisStruct.get("$$type$$"));
+            output = structName.equals((String) thisStruct.get(";type"));
           }
         }
         finally {
@@ -184,7 +279,7 @@ public class Interpreter {
           try {
             @SuppressWarnings("unchecked")
             HashMap<String, Object> thisStruct = (HashMap<String, Object>) args.get(0);
-            if (args.size() == 1 && ((String) thisStruct.get("$$type$$")).equals(structName)) {
+            if (args.size() == 1 && ((String) thisStruct.get(";type")).equals(structName)) {
               result = thisStruct.get(param);
             }
           }
@@ -270,11 +365,11 @@ public class Interpreter {
       }
       @SuppressWarnings("unchecked")
       HashMap<String, Object> rest = (HashMap<String, Object>) restObj;
-      if (!(rest.get("$$type$$").equals("mt") || rest.get("$$type$$").equals("cons"))) {
+      if (!(rest.get(";type").equals("mt") || rest.get(";type").equals("cons"))) {
         throw new RuntimeException("cons second argument must be a list");
       }
       HashMap<String, Object> output = new HashMap<String, Object>();
-      output.put("$$type$$", "cons");
+      output.put(";type", "cons");
       output.put("first", first);
       output.put("rest", rest);
       return output;
@@ -327,7 +422,7 @@ public class Interpreter {
       prev = cur;
       cur = expr.charAt(i);
       if (cur.equals(' ') && charStack.empty()) {
-        if (!(prev.equals(')') || prev.equals(' '))) {
+        if (!(prev.equals(')') || prev.equals('(') || prev.equals(' '))) {
           stringArgs.add(expr.substring(j, i));
         }
         j = i + 1;
