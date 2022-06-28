@@ -326,6 +326,12 @@ public class BasicEnv {
         }
         return ((WorldImage) a.get(0)).getWidth();
       };
+    // Determines if the input is a boolean or not
+    case "boolean?":
+      return (Function<ArrayList<Object>, Object>) (a) -> {
+        invalidArgsCheck(s, 1, a);
+        return (a.get(0) instanceof Boolean);
+      };
     // returns the identity of the input
     case "identity":
       return (Function<ArrayList<Object>, Object>) (a) -> {

@@ -54,10 +54,10 @@
   (if (empty? lox)
       empty
       (cons (f (first lox)) (map f (rest lox)))))
-(define (ormap p lox)
+(define (ormap pred lox)
   (if (empty? lox)
       false
-      (or (p (first lox)) (ormap p (rest lox)))))
+      (or (pred (first lox)) (ormap pred (rest lox)))))
 (define (andmap p lox)
   (if (empty? lox)
       true

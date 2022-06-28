@@ -41,12 +41,12 @@ public class Interpreter {
     ArrayList<String> stringArgs = parse("(" + program + ")");
     
     for (String s : stringArgs) {
-      outputArr.add(eval(s, mainEnv));
+      outputArr.add(eval(s));
     }
     
     while (!(futureTestStack1.empty() || futureTestStack2.empty())) {
-      CheckExpect.testStack1.push(eval(futureTestStack1.pop(), mainEnv));
-      CheckExpect.testStack2.push(eval(futureTestStack2.pop(), mainEnv));
+      CheckExpect.testStack1.push(eval(futureTestStack1.pop()));
+      CheckExpect.testStack2.push(eval(futureTestStack2.pop()));
     }
     
     return outputArr;
@@ -54,7 +54,7 @@ public class Interpreter {
 
   // Evaluates the given expression in the given environment
   @SuppressWarnings("finally")
-  Object eval(String expr, Function<String, Object> env) {
+  private Object eval(String expr) {
     if (expr.equals("")) {
       throw new RuntimeException("Empty string is not a valid input.");
     }
@@ -90,10 +90,10 @@ public class Interpreter {
           lamParams += ")";
         }
         lamExpr = "(lambda " + lamParams + " "  + lamExpr + ")";
-        mainEnv = extendEnv(funcName, eval(lamExpr, mainEnv), mainEnv);
+        mainEnv = extendEnv(funcName, eval(lamExpr), mainEnv);
       }
       else {
-        mainEnv = extendEnv(firstArg, eval(secondArg, mainEnv), mainEnv);
+        mainEnv = extendEnv(firstArg, eval(secondArg), mainEnv);
       }
       return null;
     }
@@ -107,15 +107,17 @@ public class Interpreter {
       ArrayList<String> lambdaParams = parse(lambdaArgs.get(0));
       String lambdaBody = lambdaArgs.get(1);
       return (Function<ArrayList<Object>, Object>) (args) -> {
-        Function<String, Object> localEnv = mainEnv;
+        Function<String, Object> tempEnv = mainEnv;
         if (lambdaParams.size() != args.size()) {
           throw new RuntimeException("function expects " + lambdaParams.size() + 
               " arguements, given " + args.size());
         }
         for (int i = 0; i < lambdaParams.size(); i++) {
-          localEnv = extendEnv(lambdaParams.get(i), args.get(i), localEnv);
+          mainEnv = extendEnv(lambdaParams.get(i), args.get(i), mainEnv);
         }
-          return eval(lambdaBody, localEnv);
+          Object lamOutput = eval(lambdaBody);
+          mainEnv = tempEnv;
+          return lamOutput;
       };
     }
     // expr is an if statement
@@ -125,11 +127,11 @@ public class Interpreter {
       if (stringArgs.size() != 3) {
         throw new RuntimeException("if expects 3 arguements, given " + stringArgs.size());
       }
-      if ((boolean) eval(stringArgs.get(0), env)) {
-        return eval(stringArgs.get(1), env);
+      if ((boolean) eval(stringArgs.get(0))) {
+        return eval(stringArgs.get(1));
       }
       else {
-        return eval(stringArgs.get(2), env);
+        return eval(stringArgs.get(2));
       }
     }
     else if (expr.length() > 14 && expr.substring(0, 14).equals("(check-expect ") && end.equals(')')) {
@@ -142,55 +144,57 @@ public class Interpreter {
       futureTestStack2.push(stringArgs.get(1));
       return null;
     }
-//    // expr is a local
-//    else if (expr.length() > 7 && expr.substring(0, 7).equals("(local ")) {
-//      ArrayList<String> stringArgs = parse(expr);
-//      stringArgs.remove(0);
-//      if (stringArgs.size() != 2) {
-//        throw new RuntimeException("local should have only 2 parts");
-//      }
-//      ArrayList<String> defs = parse(stringArgs.get(0));
-//      String body = stringArgs.get(1);
-//      Function<String, Object> localEnv = env;
-//      for (String def : defs) {
-//        if (def.length() < 8 || !def.substring(0, 8).equals("(define ")) {
-//          throw new RuntimeException("local must be given only definitions");
-//        }
-//        ArrayList<String> defArgs = parse(def);
-//        defArgs.remove(0);
-//        if (defArgs.size() != 2) {
-//          throw new RuntimeException("local defintion should have only 2 parts");
-//        }
-//        String defDef = defArgs.get(0);
-//        if (defDef.substring(0, 1).equals("(") && defDef.substring(defDef.length() -1, 
-//            defDef.length()).equals(")")) {
-//          String lamExpr = defArgs.get(1);
-//          ArrayList<String> lamArgs = parse(defDef);
-//          String funcName = lamArgs.remove(0); 
-//          Function<ArrayList<Object>, Object> localFunc = (args) -> {
-//            Function<String, Object> innerEnv = env;
-//            if (lamArgs.size() != args.size()) {
-//              throw new RuntimeException("function expects " + lamArgs.size() + 
-//                  " arguements, given " + args.size());
-//            }
-//            for (int i = 0; i < lamArgs.size(); i++) {
-//              innerEnv = extendEnv(lamArgs.get(i), args.get(i), innerEnv);
-//            }
-//              return eval(lamExpr, innerEnv);
-//          };
-//          localEnv = extendEnv(funcName, localFunc, localEnv);
-//        }
-//        else {
-//          localEnv = extendEnv(defDef, eval(defArgs.get(1), localEnv), localEnv);
-//        }
-//      }
-//      return eval(body, localEnv);
-//    }
+    // expr is a local
+    else if (expr.length() > 7 && expr.substring(0, 7).equals("(local ")) {
+      ArrayList<String> stringArgs = parse(expr);
+      stringArgs.remove(0);
+      if (stringArgs.size() != 2) {
+        throw new RuntimeException("local should have only 2 parts");
+      }
+      ArrayList<String> defs = parse(stringArgs.get(0));
+      String body = stringArgs.get(1);
+      Function<String, Object> tempEnv = mainEnv;
+      for (String def : defs) {
+        if (def.length() < 8 || !def.substring(0, 8).equals("(define ")) {
+          throw new RuntimeException("local must be given only definitions");
+        }
+        ArrayList<String> defArgs = parse(def);
+        defArgs.remove(0);
+        if (defArgs.size() != 2) {
+          throw new RuntimeException("local defintion should have only 2 parts");
+        }
+        String defDef = defArgs.get(0);
+        if (defDef.substring(0, 1).equals("(") && defDef.substring(defDef.length() -1, 
+            defDef.length()).equals(")")) {
+          String lamExpr = defArgs.get(1);
+          ArrayList<String> lamArgs = parse(defDef);
+          String funcName = lamArgs.remove(0);
+          String lamParams = "(";
+          if (lamArgs.size() > 0) {
+            for (String p : lamArgs) {
+              lamParams += p + " ";
+            }
+            lamParams = lamParams.substring(0, lamParams.length() - 1) + ")";
+          }
+          else {
+            lamParams += ")";
+          }
+          lamExpr = "(lambda " + lamParams + " "  + lamExpr + ")";
+          mainEnv = extendEnv(funcName, eval(lamExpr), mainEnv);
+        }
+        else {
+          mainEnv = extendEnv(defDef, eval(defArgs.get(1)), mainEnv);
+        }
+      }
+      Object localOutput = eval(body);
+      mainEnv = tempEnv;
+      return localOutput;
+    }
     // expr is big bang
     else if (expr.length() > 10 && expr.substring(0, 10).equals("(big-bang ")) {
       ArrayList<String> stringArgs = parse(expr);
       stringArgs.remove(0);
-      BigBang bigBangGame = new BigBang(eval(stringArgs.get(0), env));
+      BigBang bigBangGame = new BigBang(eval(stringArgs.get(0)));
       for (int i = 1; i < stringArgs.size(); i++) {
         ArrayList<String> bangArgs = parse(stringArgs.get(i));
         if (bangArgs.size() != 2 && !bangArgs.get(0).equals("stop-when")) {
@@ -200,20 +204,20 @@ public class Interpreter {
         String stringFunc = bangArgs.get(1);
         // Checking which function to add
         if (bbFunc.equals("to-draw")) {
-          bigBangGame.setToDraw(eval(stringFunc, env));
+          bigBangGame.setToDraw(eval(stringFunc));
         }
         else if (bbFunc.equals("on-tick")) {
-          bigBangGame.setOnTick(eval(stringFunc, env));
+          bigBangGame.setOnTick(eval(stringFunc));
         }
         else if (bbFunc.equals("on-key")) {
-          bigBangGame.setOnKey(eval(stringFunc, env));
+          bigBangGame.setOnKey(eval(stringFunc));
         }
         else if (bbFunc.equals("stop-when")) {
           if (bangArgs.size() == 2) {
-            bigBangGame.setStopWhen(eval(stringFunc, env));
+            bigBangGame.setStopWhen(eval(stringFunc));
           }
           else if (bangArgs.size() == 3) {
-            bigBangGame.setStopWhen(eval(stringFunc, env), eval(bangArgs.get(2), env));
+            bigBangGame.setStopWhen(eval(stringFunc), eval(bangArgs.get(2)));
           }
           else {
             throw new RuntimeException("stop-when should only be given 2 or 3 arguments");
@@ -300,21 +304,13 @@ public class Interpreter {
     else if (expr.length() > 6 && expr.substring(0, 6).equals("(cond ")) {
       ArrayList<String> stringArgs = parse(expr);
       stringArgs.remove(0);
-      Function<String, Object> localEnv = (s) -> {
-        if (s.equals("else")) {
-          return true;
-        }
-        else {
-          return env.apply(s);
-        }
-      };
       for (String clause : stringArgs) {
         ArrayList<String> pair = parse(clause);
         if (pair.size() != 2) {
           throw new RuntimeException("cond branch expects 2 clauses, given " + pair.size());
         }
-        if ((boolean) eval(pair.get(0), localEnv)) {
-          return eval(pair.get(1), env);
+        if (pair.get(0).equals("else") || (boolean) eval(pair.get(0))) {
+          return eval(pair.get(1));
         }
       }
       throw new RuntimeException("Every cond branch evaluated to false.");
@@ -332,7 +328,7 @@ public class Interpreter {
       ArrayList<String> stringArgs = parse(expr);
       stringArgs.remove(0);
       while (!stringArgs.isEmpty()) {
-        boolean result = (boolean) eval(stringArgs.remove(0), env);
+        boolean result = (boolean) eval(stringArgs.remove(0));
         if (!result) {
           return false;
         }
@@ -344,7 +340,7 @@ public class Interpreter {
       ArrayList<String> stringArgs = parse(expr);
       stringArgs.remove(0);
       while (!stringArgs.isEmpty()) {
-        boolean result = (boolean) eval(stringArgs.remove(0), env);
+        boolean result = (boolean) eval(stringArgs.remove(0));
         if (result) {
           return true;
         }
@@ -358,8 +354,8 @@ public class Interpreter {
       if (stringArgs.size() != 2) {
         throw new RuntimeException("cons must only recieve 2 arguments");
       }
-      Object first = eval(stringArgs.get(0), env);
-      Object restObj = eval(stringArgs.get(1), env);
+      Object first = eval(stringArgs.get(0));
+      Object restObj = eval(stringArgs.get(1));
       if (!(restObj instanceof HashMap)) {
         throw new RuntimeException("cons second argument must be a list");
       }
@@ -379,17 +375,17 @@ public class Interpreter {
       ArrayList<String> stringArgs = parse(expr);
       stringArgs.remove(0);
       if (stringArgs.size() == 0) {
-        return eval("empty", env);
+        return eval("empty");
       }
       String stringList = "empty";
       for (int i = stringArgs.size() - 1; i >= 0; i--) {
         stringList = "(cons " + stringArgs.get(i)+ " " + stringList + ")";
       }
-      return eval(stringList, env);
+      return eval(stringList);
     }
     // expr is a function call
     else if (start.equals('(') && end.equals(')')) {
-      return evalFunction(expr, env);
+      return evalFunction(expr);
     }
     // expr is a symbol
     else if (start.equals('\'') && !expr.equals("'()")) {
@@ -408,7 +404,7 @@ public class Interpreter {
       return Double.parseDouble(expr);
     }
     else {
-      return env.apply(expr);
+      return mainEnv.apply(expr);
     }
   }
 
@@ -453,15 +449,15 @@ public class Interpreter {
     return stringArgs;
   }
   
-  public Object evalFunction(String expr, Function<String, Object> env) {
+  public Object evalFunction(String expr) {
     ArrayList<String> stringArgs = parse(expr);
     // Running the program
     ArrayList<Object> args = new ArrayList<Object>();
     @SuppressWarnings("unchecked")
     Function<ArrayList<Object>, Object> func = (Function<ArrayList<Object>, Object>) 
-        eval(stringArgs.remove(0), env);
+        eval(stringArgs.remove(0));
     for (String s : stringArgs) {
-      args.add(eval(s, env));
+      args.add(eval(s));
     }
     return func.apply(args);
   }
