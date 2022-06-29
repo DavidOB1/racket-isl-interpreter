@@ -1,6 +1,10 @@
 # Racket ISL Interpreter
 
-An interpreter for Racket's ISL. To use, do the following:
+An interpreter for Racket's ISL
+
+![isl-interpreter](https://user-images.githubusercontent.com/62823414/176480562-192e6ec8-c262-49ef-b34f-79e729d3d288.gif)
+
+To use, do the following:
 
 - Download Northeastern's javalib and tester libraries and add them to the project
 - Set your run configuration to the Main class, and pass in the filename of the file you wish to interpret as the argument
