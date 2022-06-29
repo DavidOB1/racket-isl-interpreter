@@ -69,10 +69,13 @@ public class Main {
         break;
       }
       try {
-        ArrayList<Object> lineEval = interpreter.interpret(line);
-        for (Object o : lineEval) {
-          if (o != null) {
-            System.out.println(o);
+        String formatted = formatProg(line);
+        if (formatted.replace(" ", "").length() > 0) {
+          ArrayList<Object> lineEval = interpreter.interpret(formatted);
+          for (Object o : lineEval) {
+            if (o != null) {
+              System.out.println(o);
+            }
           }
         }
       }
