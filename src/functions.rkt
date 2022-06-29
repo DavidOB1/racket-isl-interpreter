@@ -177,8 +177,8 @@
 ; Functions for images
 (define (square s o c)
   (rectangle s s o c))
-(define (empty-scene w h)
-  (rectangle w h "outline" "black"))
+(define (empty-scene w h color)
+  (rectangle w h "outline" color))
 (define (place-images imgs posns scene)
   (cond
     [(and (empty? imgs) (empty? posns)) scene]
