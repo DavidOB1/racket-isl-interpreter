@@ -12,7 +12,7 @@ public class Main {
     // Loading macros
     String program = "";
     try {
-      File file = new File("src/macros.rkt");
+      File file = new File("src/functions.rkt");
       Scanner fileReader = new Scanner(file);
       while (fileReader.hasNextLine()) {
         program += fileReader.nextLine() + "\n";
@@ -34,26 +34,27 @@ public class Main {
     ArrayList<Object> output = 
         interpreter.interpret(program.replace('\n', ' ').replace('\t', ' ')
             .replace('[', '(').replace(']', ')').replace("λ", "lambda"));
-    // doing check-expects
+    // Performs check-expects
     String[] a = {"CheckExpect"};
     tester.Main.main(a);
     System.out.println("");
+    
+    // Prints out any non-null outputs
     for (Object o : output) {
       if (o != null) {
         System.out.println(o);
       }
     }
     
-    // Interactions window
+    // Creates the interactions window
     System.out.println("");
-    System.out.println("--------------------------");
-    System.out.println(" DrRacket ISL Interpreter ");
-    System.out.println("  Type !stop to terminate ");
-    System.out.println("--------------------------");
+    System.out.println("+-------------------------+");
+    System.out.println("| Racket ISL Interpreter  |");
+    System.out.println("| Type !stop to terminate |");
+    System.out.println("+-------------------------+");
+    Scanner in = new Scanner(System.in);
     while (running) {
       System.out.print("> ");
-      @SuppressWarnings("resource")
-      Scanner in = new Scanner(System.in);
       String line = in.nextLine();
       if (line.equals("!stop")) {
         running = false;
@@ -72,9 +73,11 @@ public class Main {
         System.out.println("Error: " + e.getMessage());
       }
     }
+    in.close();
   }
   
-  public static String removeComments(String prog) {
+  // Removes comments from a given program
+  private static String removeComments(String prog) {
     String output = "";
     Stack<Character> charStack = new Stack<Character>();
     for (int i = 0; i < prog.length(); i++) {

@@ -1,14 +1,15 @@
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Stack;
+import java.util.ArrayDeque;
 import java.util.function.Function;
 import javalib.worldimages.WorldImage;
 
 public class Interpreter {
 
   private Function<String, Object> mainEnv = BasicEnv.env;
-  private Stack<String> futureTestStack1 = new Stack<String>();
-  private Stack<String> futureTestStack2 = new Stack<String>();
+  private ArrayDeque<String> futureTestQueue1 = new ArrayDeque<String>();
+  private ArrayDeque<String> futureTestQueue2 = new ArrayDeque<String>();
   
   // Determines if the string is an int
   static boolean isInteger(String s) {
@@ -44,9 +45,9 @@ public class Interpreter {
       outputArr.add(eval(s));
     }
     
-    while (!(futureTestStack1.empty() || futureTestStack2.empty())) {
-      CheckExpect.testStack1.push(eval(futureTestStack1.pop()));
-      CheckExpect.testStack2.push(eval(futureTestStack2.pop()));
+    while (!(futureTestQueue1.isEmpty() || futureTestQueue2.isEmpty())) {
+      CheckExpect.testQueue1.add(eval(futureTestQueue1.remove()));
+      CheckExpect.testQueue2.add(eval(futureTestQueue2.remove()));
     }
     
     return outputArr;
@@ -140,8 +141,8 @@ public class Interpreter {
       if (stringArgs.size() != 2) {
         throw new RuntimeException("check-expect expects 2 arguments, given " + stringArgs.size());
       }
-      futureTestStack1.push(stringArgs.get(0));
-      futureTestStack2.push(stringArgs.get(1));
+      futureTestQueue1.push(stringArgs.get(0));
+      futureTestQueue2.push(stringArgs.get(1));
       return null;
     }
     // expr is a local
@@ -228,7 +229,7 @@ public class Interpreter {
         }
       }
       WorldImage firstFrame = bigBangGame.draw();
-      bigBangGame.bigBang((int) firstFrame.getWidth(), (int) firstFrame.getHeight(), 1.0 / 28.0);
+      bigBangGame.bigBang((int) firstFrame.getWidth(), (int) firstFrame.getHeight(), 1.0 / 58.0);
       return null;
     }
     // expr is an import

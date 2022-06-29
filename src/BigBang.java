@@ -7,9 +7,26 @@ import javalib.worldimages.*;
 @SuppressWarnings("unchecked")
 public class BigBang extends World {
   
-  Object ws;
-  Function<ArrayList<Object>, Object> toDraw, onTick, onKey, stopWhen, finalScene;
-  int frameWidth, frameHeight;
+  private Object ws;
+  private Function<ArrayList<Object>, Object> toDraw, onTick, onKey, stopWhen, finalScene;
+  private int frameWidth, frameHeight;
+  
+  private static String stringToKey(String ke) {
+    switch (ke) {
+      case "enter":
+        return "\\r";
+      case "tab":
+        return "\\t";
+      case "backspace":
+        return "\\b";
+      case "right-shift":
+        return "rshift";
+      case "right-control":
+        return "rcontrol";
+      default:
+        return ke;
+    }
+  }
   
   BigBang(Object worldState) {
     ws = worldState;
@@ -86,7 +103,7 @@ public class BigBang extends World {
   }
   
   public void onKeyEvent(String ke) {
-    ws = onKey.apply(new ArrayList<Object>(Arrays.asList(ws, ke))); 
+    ws = onKey.apply(new ArrayList<Object>(Arrays.asList(ws, stringToKey(ke)))); 
   }
   
   public WorldEnd worldEnds() {
