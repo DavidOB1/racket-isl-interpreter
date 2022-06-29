@@ -4,12 +4,14 @@ import java.util.ArrayList;
 import java.util.Stack;
 import java.util.Scanner;
 
+// Main class
 public class Main {
 
+  // The main method
   public static void main(String[] args) {
-    boolean running = true;
     Interpreter interpreter = new Interpreter();
-    // Loading macros
+    
+    // Loading files
     String program = "";
     try {
       File file = new File("src/functions.rkt");
@@ -26,14 +28,13 @@ public class Main {
       fileReader.close();
     }
     catch (FileNotFoundException e) {
-      throw new RuntimeException("Please ensure 'macros.txt' is contained in the src directory "
+      throw new RuntimeException("Please ensure 'functions.rkt' is contained in the src directory "
           + "and that the file you want ran is in the src directory and the run configuration.");
     }
 
-    program = removeComments(program.replace("#reader", ";").replace("#;", ""));
-    ArrayList<Object> output = 
-        interpreter.interpret(program.replace('\n', ' ').replace('\t', ' ')
-            .replace('[', '(').replace(']', ')').replace("λ", "lambda"));
+    // Interprets the program
+    ArrayList<Object> output = interpreter.interpret(formatProg(program));
+    
     // Performs check-expects
     String[] a = {"CheckExpect"};
     tester.Main.main(a);
@@ -45,8 +46,14 @@ public class Main {
         System.out.println(o);
       }
     }
-    
+  
     // Creates the interactions window
+    interactionsWindow(interpreter);
+  }
+  
+  // Runs the interactions window
+  private static void interactionsWindow(Interpreter interpreter) {
+    boolean running = true;
     System.out.println("");
     System.out.println("+-------------------------+");
     System.out.println("| Racket ISL Interpreter  |");
@@ -76,26 +83,35 @@ public class Main {
     in.close();
   }
   
+  // Formats the given program
+  private static String formatProg(String prog) {
+    return removeComments(prog).replace('\n', ' ').replace('\t', ' ')
+        .replace('[', '(').replace(']', ')').replace("λ", "lambda").replace("#;", "");
+  }
+  
   // Removes comments from a given program
   private static String removeComments(String prog) {
+    String program = prog.replace("#reader", ";");
     String output = "";
     Stack<Character> charStack = new Stack<Character>();
-    for (int i = 0; i < prog.length(); i++) {
-      Character cur = prog.charAt(i);
-      if (cur.equals('#') && i < prog.length() - 1 && String.valueOf(prog.charAt(i+1)).equals("|")) {
+    for (int i = 0; i < program.length(); i++) {
+      Character cur = program.charAt(i);
+      if (cur.equals('#') && i < program.length() - 1 && 
+          String.valueOf(program.charAt(i+1)).equals("|")) {
         charStack.add(cur);
       }
-      if (cur.equals('#') && i > 0 && String.valueOf(prog.charAt(i-1)).equals("|")) {
+      if (cur.equals('#') && i > 0 && String.valueOf(program.charAt(i-1)).equals("|")) {
         charStack.pop();
         cur = '\n';
       }
       if (cur.equals(';') && charStack.empty()) {
         charStack.add(cur);
       }
+      // Checking whether to pop from the stack, add to the string, or skip the character
       if (charStack.empty()) {
         output += String.valueOf(cur);
       }
-      else if (cur.equals('\n')) {
+      else if (charStack.peek().equals(';') && cur.equals('\n')) {
         charStack.pop();
       }
     }

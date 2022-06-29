@@ -11,6 +11,7 @@ public class BigBang extends World {
   private Function<ArrayList<Object>, Object> toDraw, onTick, onKey, stopWhen, finalScene;
   private int frameWidth, frameHeight;
   
+  // Ensures the key event is compatable with expected key values of the Java library
   private static String stringToKey(String ke) {
     switch (ke) {
       case "enter":
@@ -28,6 +29,7 @@ public class BigBang extends World {
     }
   }
   
+  // Constructor
   BigBang(Object worldState) {
     ws = worldState;
     toDraw = (a) -> {
@@ -45,6 +47,7 @@ public class BigBang extends World {
     finalScene = toDraw;
   }
   
+  // Initializes the to-draw function
   public void setToDraw(Object drawFunc) {
     if (!(drawFunc instanceof Function)) {
       throw new RuntimeException("to-draw requires a function");
@@ -58,6 +61,7 @@ public class BigBang extends World {
     frameHeight = (int) img.getHeight();
   }
   
+  // Initializes the on-tick function
   public void setOnTick(Object tickFunc) {
     if (!(tickFunc instanceof Function)) {
       throw new RuntimeException("on-tck requires a function");
@@ -65,6 +69,7 @@ public class BigBang extends World {
     onTick = (Function<ArrayList<Object>, Object>) tickFunc;
   }
   
+  // Initializes the on-key function
   public void setOnKey(Object keyFunc) {
     if (!(keyFunc instanceof Function)) {
       throw new RuntimeException("on-key requires a function");
@@ -72,6 +77,7 @@ public class BigBang extends World {
     onKey = (Function<ArrayList<Object>, Object>) keyFunc;
   }
   
+  // Initalizes the stop-when function
   public void setStopWhen(Object stopFunc) {
     if (!(stopFunc instanceof Function)) {
       throw new RuntimeException("stop-when requires a function");
@@ -79,6 +85,7 @@ public class BigBang extends World {
     stopWhen = (Function<ArrayList<Object>, Object>) stopFunc;
   }
   
+  // Initalizes the stop-when function with an end scene function
   public void setStopWhen(Object stopFunc, Object endDrawFunc) {
     setStopWhen(stopFunc);
     if (!(endDrawFunc instanceof Function)) {
@@ -87,10 +94,12 @@ public class BigBang extends World {
     finalScene = (Function<ArrayList<Object>, Object>) endDrawFunc;
   }
   
+  // Draws the current world state
   public WorldImage draw() {
     return (WorldImage) toDraw.apply(new ArrayList<Object>(Arrays.asList(ws)));
   }
   
+  // Draws the world scene for bigBang to use
   public WorldScene makeScene() {
     WorldScene output = new WorldScene(frameWidth, frameHeight);
     WorldImage img = draw();
@@ -98,14 +107,17 @@ public class BigBang extends World {
     return output;
   }
   
+  // Updates the world state each tick
   public void onTick() {
     ws = onTick.apply(new ArrayList<Object>(Arrays.asList(ws)));
   }
   
+  // Updates the world state on each key press
   public void onKeyEvent(String ke) {
     ws = onKey.apply(new ArrayList<Object>(Arrays.asList(ws, stringToKey(ke)))); 
   }
   
+  // Updates whether to end the game or not
   public WorldEnd worldEnds() {
     boolean over = (boolean) stopWhen.apply(new ArrayList<Object>(Arrays.asList(ws)));
     if (over) {
@@ -119,7 +131,3 @@ public class BigBang extends World {
     }
   }
 }
-
-
-
-

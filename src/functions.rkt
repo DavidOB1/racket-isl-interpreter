@@ -18,10 +18,55 @@
   (zero? (modulo n 2)))
 (define (odd? n)
   (not (even? n)))
+(define (gcd n1 n2)
+  (if (zero? n2)
+      n1
+      (gcd n2 (modulo n1 n2))))
+(define (lcm n1 n2)
+  (/ (* n1 n2) (gcd n1 n2)))
+(define (integer-sqrt n)
+  (floor (sqrt n)))
+(define (quotient x y)
+  (floor (/ x y)))
+(define e (exp 1))
 (define-struct posn [x y])
 
 ; Functions for strings
 (define key=? string=?)
+(define (explode s)
+  (explode-helper s 0))
+(define (explode-helper s n)
+  (if (< n (string-length s))
+      (cons (substring s n (add1 n))
+            (explode-helper s (add1 n)))
+      empty))
+(define (make-string n x)
+  (implode (make-list n x)))
+(define replicate make-string)
+(define string->list explode)
+(define (string-alphabetic? s)
+  (not (ormap string-numeric? (explode s))))
+(define (string-contains-ci? s t)
+  (string-contains?
+   (string-downcase s)
+   (string-downcase t)))
+(define (string-ith s n)
+  (list-ref (explode s) n))
+(define (string-lower-case? s)
+  (string=? (string-downcase s) s))
+(define string-ref string-ith)
+(define (string-upper-case? s)
+  (string=? (string-uppercase s) s))
+(define (string-whitespace? s)
+  (andmap
+   (lambda (x) (or (string=? x " ")
+                   (string=? x "\t")
+                   (string=? x "\n")
+                   (string=? x "\r")))
+   (explode s)))
+
+; Functions for booleans
+(define false? not)
 
 ; Functions for lists
 (define head first)
@@ -102,6 +147,32 @@
       (cons (first l) (insertion-sort-helper a (rest l) f))))
 (define (make-list n x)
   (build-list n (lambda (_) x)))
+(define (list-ref l n)
+  (cond
+    [(empty? l) (error "list-ref: index out of bounds error")]
+    [(zero? n) (first l)]
+    [else (list-ref (rest l) (sub1 n))]))
+(define (member x l)
+  (ormap (lambda (y) (equal? x y)) l))
+(define member? member)
+(define null? empty?)
+(define (range x y z)
+  (if (< x y)
+      (cons x (range (+ x z) y z))
+      empty))
+(define (remove x l)
+  (cond
+    [(empty? l) l]
+    [(equal? (first l) x) (rest l)]
+    [else (remove x (rest l))]))
+(define (remove x l)
+  (cond
+    [(empty? l) l]
+    [(equal? (first l) x) (remove x (rest l))]
+    [else (remove x (rest l))]))
+(define (implode l)
+  (foldr string-append "" l))
+(define list->string implode)
 
 ; Functions for images
 (define (square s o c)
