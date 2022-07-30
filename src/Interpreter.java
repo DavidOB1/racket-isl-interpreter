@@ -195,7 +195,6 @@ public class Interpreter {
         charStack.add(cur);
       }
       else if (cur.equals(')') && (charStack.empty() || !charStack.peek().equals('"'))) {
-        // Throw syntax error?
         charStack.pop();
         if (charStack.empty()) {
           stringArgs.add(expr.substring(j, i + 1));
